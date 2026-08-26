@@ -243,3 +243,80 @@ watch(
 - **문제 상황**: `favoriteCities.value.push()`로 배열 원소를 변경해도 `watch` 콜백 함수가 실행되지 않음
 - **원인 분석**: Vue 3의 `watch`에 `ref`로 감싸진 배열 전달 시 기본적으로 객체 주솟값 참조 변경만 감지함
 - **해결 방법**: `watch` 세 번째 옵션에 `{ deep: true }`를 명시하여 내부 배열 요소의 추가/삭제를 정밀 추적하도록 수정함
+
+---
+
+### Hands-on 04: 과제 3 - 날씨 앱 (Component 분리)
+
+#### 1. 개요 및 목적
+
+- 단일 파일로 구성되어 있던 과제 2의 코드를 역할별 컴포넌트로 모듈화 분리
+- 부모-자식 간 단방향 데이터 전달(`Props`), 이벤트 발신(`Emits`), 슬롯(`Slot`) 구조를 구현하고 컴포넌트 확장성 검증
+
+#### 2. 컴포넌트 분리 구조 및 역할
+
+- **`WeatherParent.vue` (부모)**: 모든 반응형 상태(`weatherList`, `searchQuery`, `favoriteCities`) 및 비즈니스 로직 연산 총괄
+- **`BaseDashboardCard.vue` (공통 껍데기)**: `<slot>` 구문을 이용해 임의의 자식 요소를 둘러싸는 공통 디자인 카드
+- **`SearchBar.vue` (자식)**: `:current-query` 전달받아 표시하고 `@update-query` 이벤트 발신
+- **`WeatherCard.vue` (자식)**: `:city-item`, `:is-favorite` 수신하여 표시하고 `@select-card`, `@click-detail`, `@toggle-favorite` 발신
+- **`WeatherStats.vue` (독창적 추가 자식 컴포넌트)**: 실시간 평균 기온 및 즐겨찾기 수량을 시각화 출력하는 전용 통계 컴포넌트
+
+#### 3. 본인 차별점 (커스텀 구현 포인트)
+
+- **컴포넌트 추가 분리 (`WeatherStats.vue`)**: 과제 요구사항 7번("Component 추가 분리")에 맞춰 실시간 평균 기온 및 즐겨찾기 수량을 보여주는 전용 요약 바 컴포넌트 개발
+- **표준 Props/Emits 및 독창적 기능 재통합**: 표준 규격 명칭(`:current-query`, `:city-item`)을 준수하면서 과제 2의 5개 도시 확장 데이터 및 즐겨찾기 연동 기능 유지
+
+#### 4. 핵심 구현 스니펫 및 소스 링크
+
+- **`BaseDashboardCard.vue`**: [`src/components/BaseDashboardCard.vue`](https://www.google.com/search?q=./src/components/BaseDashboardCard.vue)
+- **`SearchBar.vue`**: [`src/components/SearchBar.vue`](https://www.google.com/search?q=./src/components/SearchBar.vue)
+- **`WeatherStats.vue`**: [`src/components/WeatherStats.vue`](https://www.google.com/search?q=./src/components/WeatherStats.vue)
+- **`WeatherCard.vue`**: [`src/components/WeatherCard.vue`](https://www.google.com/search?q=./src/components/WeatherCard.vue)
+- **`WeatherParent.vue`**: [`src/components/WeatherParent.vue`](https://www.google.com/search?q=./src/components/WeatherParent.vue)
+
+##### [WeatherParent.vue & BaseDashboardCard.vue - 슬롯 구조 조립 스니펫]
+
+```vue
+<!-- 부모 스코프에서 Slot 내부 자식 컴포넌트 바인딩 및 조립 -->
+<BaseDashboardCard>
+  <SearchBar :current-query="searchQuery" @update-query="(val) ="> (searchQuery = val)"
+  />
+</BaseDashboardCard>
+
+<BaseDashboardCard>
+  <!-- 독창적 추가 컴포넌트 주입 -->
+  <WeatherStats :avg-temp="averageTemp" :fav-count="favoriteCities.length"/>
+
+  <WeatherCard :city-item="item" :is-favorite="favoriteCities.includes(item.name)" :key="item.id" @select-card="(msg) =" v-for="item in filteredWeatherList"> (selectedCityInfo = msg)"
+    @click-detail="showDetail"
+    @toggle-favorite="handleToggleFavorite"
+  />
+</BaseDashboardCard>
+```
+
+##### [WeatherCard.vue - 자식 이벤트 버블링 차단 및 발신 스니펫]
+
+```vue
+<!-- 즐겨찾기 클릭 시 부모 클릭 이벤트로 전파되지 않도록 .stop 수식어 적용 -->
+<button
+  class="fav-btn"
+  :class="{ active: isFavorite }"
+  @click.stop="$emit('toggle-favorite', cityItem.name)"
+>
+  {{ isFavorite ? '★' : '☆' }}
+</button>
+```
+
+#### 5. 트러블슈팅 및 해결 과정
+
+##### [Troubleshooting 1] Slot 내부 자식 컴포넌트 데이터 바인딩 스코프 동작 원리
+
+- **문제 상황**: `BaseDashboardCard`의 `<slot>` 내부에 주입된 `SearchBar` 및 `WeatherCard`가 자식의 자식 형태임에도 `WeatherParent`의 변수와 직접 데이터 바인딩이 가능한가에 대한 스코프 혼선 발생
+- **원인 분석**: Vue의 슬롯 콘텐츠는 무대 역할을 하는 전달 대상 컴포넌트(`BaseDashboardCard`) 내부가 아니라, 작성된 위치인 부모 컴포넌트(`WeatherParent`) 스코프에서 평가 및 컴파일됨
+- **해결 방법**: `WeatherParent`에서 슬롯 내부 자식 요소들에 직접 `:current-query` 및 `@update-query` 등의 Props/Emits를 연결하여 직관적인 데이터 통신 구현
+
+##### [Troubleshooting 2] 자식 컴포넌트 간 이벤트 발신 시 Emits 인자 매핑 이슈
+
+- **문제 상황**: 자식 컴포넌트인 `WeatherCard`에서 `click-detail` 이벤트를 쏠 때 `cityItem.name`과 `cityItem.status`를 전달하는데 부모에서 인자가 올바르게 매핑되지 않는 이슈 발생
+- **원인 분석**: `$emit('click-detail', cityItem.name, cityItem.status)` 형태 사용 시 부모에서 `@click-detail="showDetail"`로 함수명만 바인딩해야 순서대로 인자가 자동 매핑되는데, 부모 템플릿 인라인 표현식 사용 시 인자 전달 방식에 혼선이 있었음
+- **해결 방법**: 부모의 `@click-detail="showDetail"` 표현 방식을 명확히 정돈하여 인자가 순서대로 정상 전달되도록 정립함
