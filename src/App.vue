@@ -1,8 +1,8 @@
 <script setup>
-import ReactiveState from './components/Day3/ReactiveState.vue'
+import WatchReactive from './components/Day3/WatchReactive.vue'
 </script>
 <template>
   <div style="padding: 20px">
-    <ReactiveState />
+    <WatchReactive />
   </div>
 </template>
