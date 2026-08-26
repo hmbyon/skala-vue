@@ -1,8 +1,8 @@
 <script setup>
-import WeatherMockup from './components/Day3/WeatherMockup.vue'
+import ReactiveState from './components/Day3/ReactiveState.vue'
 </script>
 <template>
   <div style="padding: 20px">
-    <WeatherMockup />
+    <ReactiveState />
   </div>
 </template>
