@@ -170,3 +170,76 @@ npm run build
 - **문제 상황**: 카드 내부의 [상세보기] 버튼 클릭 시 alert 호출과 동시에 부모 요소인 `.weather-card`에 바인딩된 클릭 이벤트까지 중복 실행됨
 - **원인 분석**: DOM 이벤트 전파 단계 중 자식 버튼 요소의 클릭 이벤트가 상위 카드 요소로 솟구치는 이벤트 버블링 발생
 - **해결 방법**: 버튼 요소의 클릭 디렉티브에 `@click.stop` 수식어를 추가하여 이벤트 전파 차단
+
+---
+
+---
+
+### Hands-on 03: 과제 2 - 날씨 앱 (Composition API)
+
+#### 1. 개요 및 목적
+
+- Composition API의 핵심 기능인 반응형 상태(`ref`), 계산된 프로퍼티(`computed`), 상태 감시자(`watch`, `watchEffect`)의 동작 메커니즘 습득
+- 데이터 가공 처리, 부효과(Side Effect) 제어, 조건부 렌더링을 적용하고 커스텀 반응형 상태와 계산/감시 로직 구현
+
+#### 2. 주요 구현 내용
+
+- **ref 반응형 상태 관리**: `searchQuery`, `selectedCityInfo`, `weatherList`, `favoriteCities`를 `ref`로 선언하여 실시간 반영
+- **computed 필터링 & 연산**:
+  - `filteredWeatherList`: `searchQuery`에 입력된 문자열을 포함하는 도시만 실시간 필터링
+  - `averageTemp`: **현재 화면에 필터링되어 출력 중인 도시들의 평균 기온**을 실시간 연산
+
+- **watch 및 watchEffect 감시자 설정**:
+  - `watch(selectedCityInfo)`: 하단 상태 바 문구 변경 시 로그 출력
+  - `watchEffect`: `searchQuery` 수집하여 타이핑 시마다 자동 로그 출력
+  - `watch(favoriteCities, ..., { deep: true })`: 즐겨찾기 배열 내부 원소 변경 감시
+
+- **검색 결과 예외 처리**: `v-if` 조건으로 결과가 없을 경우 "검색 결과가 일치하는 도시가 없습니다" 메시지 노출
+
+#### 3. 본인 차별점 (커스텀 구현 기능)
+
+- **커스텀 반응형 상태 (`favoriteCities`)**: 사용자가 카드 내 별표 버튼(★/☆)을 눌러 관심 도시를 저장/삭제할 수 있는 토글 기능 구현
+- **커스텀 계산 프로퍼티 (`averageTemp`)**: 검색어로 걸러진 결과 집합에 대한 실시간 평균 기온 계산 및 우측 상단 배지 노출
+- **커스텀 정밀 감시자 (`watch` + `{ deep: true }`)**: 즐겨찾기 배열 내부 원소 변경을 감지하도록 깊은 감시 옵션 설정
+
+#### 4. 핵심 구현 스니펫
+
+- **작성 소스 파일**: [`src/components/WeatherComposition.vue`](https://www.google.com/search?q=./src/components/WeatherComposition.vue)
+
+```javascript
+// computed: 실시간 필터링 및 현재 표시 목록 대상 평균 기온 계산
+const filteredWeatherList = computed(() => {
+  const query = searchQuery.value.trim()
+  if (!query) return weatherList.value
+  return weatherList.value.filter((item) => item.name.includes(query))
+})
+
+const averageTemp = computed(() => {
+  if (filteredWeatherList.value.length === 0) return 0
+  const total = filteredWeatherList.value.reduce((sum, item) => sum + item.temp, 0)
+  return (total / filteredWeatherList.value.length).toFixed(1)
+})
+
+// watch: 배열 내부 중첩 변경사항 추적 ({ deep: true })
+watch(
+  favoriteCities,
+  (newFavorites) => {
+    console.log(`⭐ [watch 감지] 즐겨찾기 목록: ${newFavorites.join(', ') || '없음'}`)
+  },
+  { deep: true },
+)
+```
+
+#### 5. 트러블슈팅 및 해결 과정
+
+##### [Troubleshooting 1] watchEffect 컴포넌트 초기화 시점 자동 호출 현상
+
+- **문제 상황**: 페이지 진입 시 검색어를 입력하지 않았음에도 콘솔에 `watchEffect` 로그가 즉시 출력됨
+- **원인 분석**: `watchEffect`는 반응형 의존성을 자동으로 수집하는 과정에서 컴포넌트 마운트 직후 최초 1회 즉시 실행되는 특성을 가짐
+- **해결 방법**: 초기 자율 실행이 필요한 영역에는 `watchEffect`를, 특정 변수 변경 시점에만 동작시킬 작업에는 `watch`를 구별하여 지정함
+
+##### [Troubleshooting 2] 참조 타입 배열(favoriteCities) 내부 변경 미감지 현상
+
+- **문제 상황**: `favoriteCities.value.push()`로 배열 원소를 변경해도 `watch` 콜백 함수가 실행되지 않음
+- **원인 분석**: Vue 3의 `watch`에 `ref`로 감싸진 배열 전달 시 기본적으로 객체 주솟값 참조 변경만 감지함
+- **해결 방법**: `watch` 세 번째 옵션에 `{ deep: true }`를 명시하여 내부 배열 요소의 추가/삭제를 정밀 추적하도록 수정함
