@@ -126,9 +126,9 @@ npm run build
 - **데이터 구조 확장**: 요구사항의 기본 도시(서울, 수원, 부산) 외에 대전, 제주 데이터를 추가 구성하여 총 5개 도시 목록 구축
 - **한글 IME 실시간 입출력 동기화**: 단순 `v-model` 바인딩 시 한글 조합 입력 중간에 상태 반영이 씹히는 현상을 극복하기 위해 인라인 `@input` 핸들러와 `:value` 바인딩 조합으로 실시간 동기화 구현
 
-#### 4. 핵심 구현 스니펫
+#### 4. 핵심 구현 스니펫 및 소스 파일
 
-- **작성 소스 파일**: [`src/components/WeatherMockup.vue`](https://www.google.com/search?q=./src/components/WeatherMockup.vue)
+- **작성 소스 파일**: `src/components/WeatherMockup.vue`
 
 ```vue
 <!-- 한글 조합 지연 방지 바인딩 및 이벤트 버블링 차단 (.stop) -->
@@ -173,8 +173,6 @@ npm run build
 
 ---
 
----
-
 ### Hands-on 03: 과제 2 - 날씨 앱 (Composition API)
 
 #### 1. 개요 및 목적
@@ -185,7 +183,7 @@ npm run build
 #### 2. 주요 구현 내용
 
 - **ref 반응형 상태 관리**: `searchQuery`, `selectedCityInfo`, `weatherList`, `favoriteCities`를 `ref`로 선언하여 실시간 반영
-- **computed 필터링 & 연산**:
+  - **computed 필터링 & 연산**:
   - `filteredWeatherList`: `searchQuery`에 입력된 문자열을 포함하는 도시만 실시간 필터링
   - `averageTemp`: **현재 화면에 필터링되어 출력 중인 도시들의 평균 기온**을 실시간 연산
 
@@ -202,9 +200,9 @@ npm run build
 - **커스텀 계산 프로퍼티 (`averageTemp`)**: 검색어로 걸러진 결과 집합에 대한 실시간 평균 기온 계산 및 우측 상단 배지 노출
 - **커스텀 정밀 감시자 (`watch` + `{ deep: true }`)**: 즐겨찾기 배열 내부 원소 변경을 감지하도록 깊은 감시 옵션 설정
 
-#### 4. 핵심 구현 스니펫
+#### 4. 핵심 구현 스니펫 및 소스 파일
 
-- **작성 소스 파일**: [`src/components/WeatherComposition.vue`](https://www.google.com/search?q=./src/components/WeatherComposition.vue)
+- **작성 소스 파일**: `src/components/WeatherComposition.vue`
 
 ```javascript
 // computed: 실시간 필터링 및 현재 표시 목록 대상 평균 기온 계산
@@ -266,21 +264,20 @@ watch(
 - **컴포넌트 추가 분리 (`WeatherStats.vue`)**: 과제 요구사항 7번("Component 추가 분리")에 맞춰 실시간 평균 기온 및 즐겨찾기 수량을 보여주는 전용 요약 바 컴포넌트 개발
 - **표준 Props/Emits 및 독창적 기능 재통합**: 표준 규격 명칭(`:current-query`, `:city-item`)을 준수하면서 과제 2의 5개 도시 확장 데이터 및 즐겨찾기 연동 기능 유지
 
-#### 4. 핵심 구현 스니펫 및 소스 링크
+#### 4. 핵심 구현 스니펫 및 소스 파일
 
-- **`BaseDashboardCard.vue`**: [`src/components/BaseDashboardCard.vue`](https://www.google.com/search?q=./src/components/BaseDashboardCard.vue)
-- **`SearchBar.vue`**: [`src/components/SearchBar.vue`](https://www.google.com/search?q=./src/components/SearchBar.vue)
-- **`WeatherStats.vue`**: [`src/components/WeatherStats.vue`](https://www.google.com/search?q=./src/components/WeatherStats.vue)
-- **`WeatherCard.vue`**: [`src/components/WeatherCard.vue`](https://www.google.com/search?q=./src/components/WeatherCard.vue)
-- **`WeatherParent.vue`**: [`src/components/WeatherParent.vue`](https://www.google.com/search?q=./src/components/WeatherParent.vue)
+- `src/components/BaseDashboardCard.vue`
+- `src/components/SearchBar.vue`
+- `src/components/WeatherStats.vue`
+- `src/components/WeatherCard.vue`
+- `src/components/WeatherParent.vue`
 
 ##### [WeatherParent.vue & BaseDashboardCard.vue - 슬롯 구조 조립 스니펫]
 
 ```vue
 <!-- 부모 스코프에서 Slot 내부 자식 컴포넌트 바인딩 및 조립 -->
 <BaseDashboardCard>
-  <SearchBar :current-query="searchQuery" @update-query="(val) ="> (searchQuery = val)"
-  />
+  <SearchBar :current-query="searchQuery" @update-query="(val) ="> (searchQuery = val)" />
 </BaseDashboardCard>
 
 <BaseDashboardCard>
@@ -320,3 +317,97 @@ watch(
 - **문제 상황**: 자식 컴포넌트인 `WeatherCard`에서 `click-detail` 이벤트를 쏠 때 `cityItem.name`과 `cityItem.status`를 전달하는데 부모에서 인자가 올바르게 매핑되지 않는 이슈 발생
 - **원인 분석**: `$emit('click-detail', cityItem.name, cityItem.status)` 형태 사용 시 부모에서 `@click-detail="showDetail"`로 함수명만 바인딩해야 순서대로 인자가 자동 매핑되는데, 부모 템플릿 인라인 표현식 사용 시 인자 전달 방식에 혼선이 있었음
 - **해결 방법**: 부모의 `@click-detail="showDetail"` 표현 방식을 명확히 정돈하여 인자가 순서대로 정상 전달되도록 정립함
+
+---
+
+### Hands-on 05: 과제 4 - 라우터 적용 (Vue Router)
+
+#### 1. 개요 및 목적
+
+- Vue Router 4를 도입하여 싱글 페이지 애플리케이션(SPA) 환경에서 새로고침 없는 클라이언트 사이드 라우팅 구현
+- 지연 로딩(Lazy Loading), 동적 경로 매핑(Dynamic Route Matching), URL 쿼리 스트링 상태 연동 및 Catch-all 404 예외 처리 적용
+
+#### 2. 주요 구현 내용
+
+- **페이지 구성 및 라우터 설정 (`src/router/index.js`)**:
+  - `WeatherHomeView.vue` (`/`): 메인 대시보드 및 실시간 검색, 도시 카드 목록
+  - `WeatherAboutView.vue` (`/about`): 서비스 소개 정적 페이지
+  - `WeatherDetailView.vue` (`/weather/:cityId`): `:cityId` 동적 파라미터를 수신하여 기상 관측 상세 정보 출력
+  - `NotFoundView.vue` (`/:pathMatch(.*)*`): 정의되지 않은 경로 접근 시 Catch-all Route 처리
+
+- **App.vue 레이아웃 구축**: `RouterLink` 기반 상단 내비게이션 바 및 메인 콘텐츠 영역(`RouterView`) 배치
+  - **프로그래밍 방식 이동**: 카드 상세보기 클릭 시 기존 `window.alert()`을 제거하고 `router.push('/weather/' + id)` 실행
+  - **URL 쿼리 스트링 동기화**: `WeatherHomeView.vue` 마운트 시 `route.query.search` 복원 및 타이핑 시 실시간 URL 쿼리 동기화
+
+#### 3. 본인 차별점 (커스텀 구현 포인트)
+
+- **추가 View 작성 및 라우팅 (`WeatherStatsView.vue`)**: 요구사항 6번("추가 view 작성 및 Routing")에 맞춰 전국 기온 요약 통계를 보여주는 전용 페이지(`/stats`) 개발 및 라우터 등록
+- **커스텀 404 예외 처리 UI (`NotFoundView.vue`)**: 독창적인 아이콘(`☀️❓`)과 중앙 정렬 카드 레이아웃을 적용하여 직관적이고 친근한 에러 안내 화면 구성
+
+#### 4. 핵심 구현 스니펫 및 주요 소스 파일
+
+- `src/router/index.js`
+- `src/views/WeatherHomeView.vue`
+- `src/views/WeatherDetailView.vue`
+- `src/views/WeatherAboutView.vue`
+- `src/views/NotFoundView.vue`
+
+##### [src/router/index.js - 지연 로딩 및 Catch-all 설정 스니펫]
+
+```javascript
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    { path: '/', name: 'home', component: () => import('../views/WeatherHomeView.vue') },
+    { path: '/about', name: 'about', component: () => import('../views/WeatherAboutView.vue') },
+    {
+      path: '/weather/:cityId',
+      name: 'weather-detail',
+      component: () => import('../views/WeatherDetailView.vue'),
+    },
+    {
+      path: '/stats',
+      name: 'weather-stats',
+      component: () => import('../views/WeatherStatsView.vue'),
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('../views/NotFoundView.vue'),
+    },
+  ],
+})
+```
+
+##### [WeatherHomeView.vue - 쿼리 스트링 동기화 및 router.replace 스니펫]
+
+```javascript
+// 초기 마운트 시 URL 쿼리(?search=) 값으로 검색 상태 복원
+onMounted(() => {
+  if (route.query.search) {
+    searchQuery.value = route.query.search
+  }
+})
+
+// 입력값 변경 시 URL 쿼리 실시간 덮어쓰기 (replace 적용으로 히스토리 누적 방지)
+watch(searchQuery, (newQuery) => {
+  router.replace({
+    path: route.path,
+    query: { search: newQuery || undefined },
+  })
+})
+```
+
+#### 5. 트러블슈팅 및 해결 과정
+
+##### [Troubleshooting 1] 검색어 실시간 타이핑 시 브라우저 방문 기록(History) 누적 현상
+
+- **문제 상황**: 검색 입력창에 한 글자씩 입력할 때마다 `watch` 내에서 `router.push()`가 실행되어 뒤로가기 버튼을 수차례 눌러야 이전 페이지로 이동하는 문제 발생
+- **원인 분석**: `router.push()`는 호출될 때마다 브라우저 세션 히스토리 스택에 새 이력을 지속적으로 쌓음
+- **해결 방법**: `router.push()` 대신 `router.replace()`를 사용하여 방문 기록을 추가하지 않고 현재 URL 상태만 덮어쓰도록 개선함
+
+##### [Troubleshooting 2] 라우터 이름(Name) 매핑 불일치로 인한 홈 이동 오류
+
+- **문제 상황**: `NotFoundView.vue`에서 `router.push({ name: 'WeatherHome' })` 호출 시 해당 이름을 찾지 못해 버튼 클릭 이벤트가 동작하지 않음
+- **원인 분석**: `router/index.js`에 설정된 메인 라우트의 name 속성(`'home'`)과 View에서 호출하려 한 name 속성(`'WeatherHome'`)이 불일치함
+- **해결 방법**: 경로 기반 직관적 이동 방식인 `router.push('/')`로 변경하여 라우터 명칭 의존성 없이 안정적으로 동작하도록 수정함
