@@ -1,8 +1,8 @@
 <script setup>
-import WatchReactive from './components/Day3/WatchReactive.vue'
+import WeatherComposition from './components/Day3/WeatherComposition.vue'
 </script>
 <template>
   <div style="padding: 20px">
-    <WatchReactive />
+    <WeatherComposition />
   </div>
 </template>
