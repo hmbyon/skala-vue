@@ -1,8 +1,8 @@
 <script setup>
-import LifecycleHook from './components/Day3/LifecycleHook.vue'
+import PropsEmitsParent from './components/Day3/PropsEmitsParent.vue'
 </script>
 <template>
   <div style="padding: 20px">
-    <LifecycleHook />
+    <PropsEmitsParent />
   </div>
 </template>
