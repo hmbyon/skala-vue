@@ -1,8 +1,8 @@
 <script setup>
-import WeatherComposition from './components/Day3/WeatherComposition.vue'
+import LifecycleHook from './components/Day3/LifecycleHook.vue'
 </script>
 <template>
   <div style="padding: 20px">
-    <WeatherComposition />
+    <LifecycleHook />
   </div>
 </template>
