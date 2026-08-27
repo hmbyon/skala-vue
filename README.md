@@ -1,6 +1,13 @@
 # SKALA Vue.js 프론트엔드 학습 및 실습 기록
 
-SKALA 과정 중 진행한 Vue 3 프론트엔드 실습 코드와 과제 수행 내역을 기록한 문서입니다.
+**배포 및 저장소 링크**
+
+- **Vercel 라이브 배포**: [hhttps://skala-vue-eight-rho.vercel.app](https://skala-vue-eight-rho.vercel.app)
+- **GitHub 저장소**: [https://github.com/hmbyon/skala-vue](https://github.com/hmbyon/skala-vue)
+
+---
+
+> SKALA 과정 중 진행한 Vue 3 프론트엔드 실습 코드와 과제 수행 내역을 기록한 문서입니다.
 
 ---
 
@@ -765,7 +772,7 @@ export default defineConfig([
   "build:staging": "vite build --mode staging",
   "build:production": "vite build --mode production",
   "lint": "run-s lint:*",
-  "format": "prettier --write-experimental-cli src/"
+  "format": "prettier --write src/"
 }
 ```
 
@@ -784,3 +791,96 @@ export default defineConfig([
 - **해결 방법**: `.gitignore` 하단에 `.env`, `.env.*` 구문을 추가하고 Vercel 대시보드 Environment Variables에 API Key를 별도 등록하여 보안 처리
 
 ---
+
+### Hands-on 10: 과제 8 - Vite 프로덕션 빌드 및 최종 배포 (Weather Deployment)
+
+#### 1. 개요 및 목적
+
+- Vite 번들러(Rollup 엔진)를 기반으로 배포 전용 정적 자산(`dist/`)을 컴파일하고, 배포 전 소스코드 정적 검사 및 코드 스타일 자동 교체를 완료함
+- OpenWeatherMap API의 도시명 영문 표기를 한글 매핑으로 개선하고, API Key 환경변수 보안 및 배포 파이프라인 구조를 검증함
+
+#### 2. 주요 구현 내용
+
+- **도시명 한글화 매핑**: OpenWeatherMap API에서 영문으로 반환되는 한국 도시명(`Seoul`, `Suwon-si`, `Jeju City` 등)을 사용자 친화적인 한글 이름(`서울`, `수원`, `제주` 등)으로 변환하는 매핑 함수(`cityNameMap`, `getKoreanCityName`) 구현
+- **소스코드 품질 최적화**: `npm run lint` 수행을 통해 코드 내 미사용 변수 및 문법 경고를 완벽히 정제(`0 errors, 0 warnings` 통과)하고, `npm run format`으로 전역 코드 스타일을 자동 교체
+- **보안 및 환경변수 격리**: API Key가 포함된 `.env`, `.env.staging`, `.env.production` 파일들을 `.gitignore`에 등록하여 GitHub 퍼블릭 저장소 유출을 차단하고 Vercel 대시보드 환경변수로 이관
+- **Vite 프로덕션 빌드 및 번들링**: `npm run build` 스크립트를 실행하여 최적화된 정적 자산(`dist/` 폴더)을 컴파일하고, 브라우저 캐싱 방지를 위한 고유 해시(Hash) 파일명 생성 및 검증 완료
+
+#### 3. 본인 차별점 (커스텀 구현 포인트)
+
+- **사용자 친화적 한글 도시명 변환 사전 구축**: API 파라미터(`lang=kr`)로 해결되지 않는 도시명 영문 표기 한계를 해결하기 위해, `cityNameMap` 객체 및 예외 처리 함수를 추가하여 한글 대시보드 UI 완결성 확보
+- **표준 CLI 옵션 보완 및 정밀 린트 통과**: `package.json` 내 Prettier CLI 옵션을 표준 규격(`--write src/`)으로 교체하고, `catch` 블록 미사용 변수(`err`) 정리를 통해 Lint 검사 100% 통과(0 errors, 0 warnings) 달성
+
+#### 4. 핵심 검수 명령어 및 주요 소스 파일
+
+- `package.json`
+- `src/views/WeatherHomeView.vue`
+
+##### [package.json - 린트/포맷터 및 환경별 빌드 스크립트 스니펫]
+
+```json
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "build:staging": "vite build --mode staging",
+  "build:production": "vite build --mode production",
+  "preview": "vite preview",
+  "lint": "eslint .",
+  "format": "prettier --write src/"
+}
+```
+
+##### [WeatherHomeView.vue - 한글 도시명 매핑 유틸 함수 스니펫]
+
+```javascript
+// 주요 도시 한글 이름 매핑 사전
+const cityNameMap = {
+  seoul: '서울',
+  suwon: '수원',
+  'suwon-si': '수원',
+  busan: '부산',
+  daejeon: '대전',
+  jeju: '제주',
+  'jeju city': '제주',
+  incheon: '인천',
+  daegu: '대구',
+  gwangju: '광주',
+  ulsan: '울산',
+  tokyo: '도쿄',
+  'new york': '뉴욕',
+}
+
+// 영문 도시명을 한글로 변환 (등록되지 않은 경우 영문 유지)
+const getKoreanCityName = (englishName) => {
+  if (!englishName) return ''
+  const key = englishName.toLowerCase().trim()
+  return cityNameMap[key] || englishName
+}
+```
+
+##### [품질 검수 및 배포 빌드 명령어]
+
+```bash
+# 1. ESLint 정적 분석 검사 (0 errors / 0 warnings 검증)
+npm run lint
+
+# 2. Prettier 전역 코드 스타일 정렬
+npm run format
+
+# 3. 최종 프로덕션 정적 배포 자산 생성
+npm run build
+```
+
+#### 5. 트러블슈팅 및 해결 과정
+
+##### [Troubleshooting 1] Prettier CLI 구형 옵션 사용으로 인한 오류 경고
+
+- **문제 상황**: `npm run format` 실행 시 `[warn] Ignored unknown option --write-experimental-cli` 문구와 함께 CLI 도움말 메시지 출력됨
+- **원인 분석**: `package.json` 스크립트에 최신 Prettier에서 지원 중단된 구형 실험적 CLI 옵션(`--write-experimental-cli`)이 지정되어 있었음
+- **해결 방법**: `package.json` 내 `format` 스크립트 명령어 옵션을 표준인 `prettier --write src/`로 정정하여 전역 포맷팅 완벽 수행
+
+##### [Troubleshooting 2] API 파라미터(lang=kr) 지정 시에도 도시명이 영문으로 반환되는 현상
+
+- **문제 상황**: OpenWeatherMap API 호출 시 `lang=kr` 파라미터를 넘겨도 날씨 상태만 한글로 표기되고 도시 이름(`res.data.name`)은 `Suwon-si`, `Jeju City` 등 영문으로 표시되어 UI 일관성이 깨짐
+- **원인 분석**: OpenWeatherMap API는 날씨 설명(`description`)만 국문 번역을 지원하며, 도시명(`name`) 식별자는 DB의 기본 영문 텍스트로 고정 반환함
+- **해결 방법**: `cityNameMap` 사전을 정의하고 `getKoreanCityName()` 유틸 함수를 작성하여 API 수신 객체의 `name` 필드를 한글로 변환 출력
