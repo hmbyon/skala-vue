@@ -517,3 +517,102 @@ const displayTemp = computed(() => {
 - **문제 상황**: `App.vue`에서 `UnitToggler.vue`를 불러올 때 모듈 로딩 에러(`Failed to resolve import`) 발생
 - **원인 분석**: 프로젝트 폴더 구조상 파일이 `src/components/` 직하위가 아닌 `src/components/exercise/` 세부 디렉터리에 위치함
 - **해결 방법**: `App.vue` 내 import 구문을 `import UnitToggler from '@/components/exercise/UnitToggler.vue'`로 프로젝트 파일 구조에 맞게 수정하여 해결
+
+---
+
+### Hands-on 07: 과제 6 - 비동기 데이터 통신 (Axios)
+
+#### 1. 개요 및 목적
+
+- Axios 라이브러리를 활용해 REST API 기반 비동기 데이터 통신(`async/await`) 메커니즘을 습득
+- OpenWeatherMap 실제 기상 API 및 기타 외부 API(Advice Slip)를 연동하여 기존 Mockup 데이터 구조를 실시간 데이터 생태계로 확장하고, Vue Router 기반 상세 예보 화면과의 연동 구조 구축
+
+#### 2. 주요 구현 내용
+
+- **OpenWeatherMap 실시간 날씨 데이터 조회 (요구사항 1)**: `axios.get()`을 통해 지정된 5개 도시('Seoul', 'Suwon', 'Busan', 'Daejeon', 'Jeju')의 실시간 날씨 상태 및 기온 데이터를 수신하고 `Promise.all`을 활용해 병렬 로딩 처리
+- **OpenWeatherMap 단기 예보 API 확장 (요구사항 2)**: 도시 카드 상세보기 클릭 시 상세 페이지(`WeatherDetailView.vue`)로 이동하여, 동적 라우트 파라미터(`:cityId`) 기반의 5일/3시간 단기 예보 API(`forecast`)를 조회하고 Grid 형태로 출력
+- **기타 외부 API 추가 연동 (요구사항 3)**: Advice Slip API(`[https://api.adviceslip.com/advice]`)를 연동하여 대시보드 하단에 "오늘의 한마디" 출력 및 [새 문장 불러오기] 비동기 갱신 기능 구현
+- **동적 도시 검색 및 추가**: 사용자가 입력한 도시명으로 실시간 API 조회를 수행하고, 검색 성공 시 목록 최상단에 신규 도시 데이터를 동적으로 삽입
+
+#### 3. 본인 차별점 (커스텀 구현 포인트)
+
+- **`Promise.all` 기반 비동기 요청 병렬화**: 초기 5개 도시의 데이터 요청을 병렬 처리하여 초기 렌더링 속도를 최적화하고, `filter(item => item !== null)` 처리로 API 에러 바운더리 구축
+- **뷰 레벨 역할 분리를 통한 라우팅 설계**: 메인 대시보드(`WeatherHomeView.vue`)와 상세 예보 페이지(`WeatherDetailView.vue`)의 역할 및 API 호출을 완전히 분리하여 확장성 확보
+- **환경변수(`import.meta.env`) 및 Pinia 스토어 연동**: OpenWeatherMap API Key를 환경변수로 안전하게 분리 관리하며, API로 불러온 실시간 기온 데이터 역시 Pinia `configStore`에 의해 섭씨/화씨로 실시간 상호 변환되도록 구축
+
+#### 4. 핵심 구현 스니펫 및 주요 소스 파일
+
+- `src/views/WeatherHomeView.vue`
+- `src/views/WeatherDetailView.vue`
+- `src/App.vue`
+
+##### [WeatherHomeView.vue - Axios 병렬 처리 및 Advice API 연동 스니펫]
+
+```javascript
+// 초기 5개 도시 실시간 날씨 데이터 병렬 요청
+const loadDefaultCities = async () => {
+  const results = await Promise.all(initialCities.map((city) => fetchCityWeather(city)))
+  cityList.value = results.filter((item) => item !== null)
+}
+
+// OpenWeatherMap Current Weather API 호출
+const fetchCityWeather = async (cityName) => {
+  try {
+    const res = await axios.get(
+      `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&units=metric&lang=kr&appid=${API_KEY}`,
+    )
+    return {
+      id: res.data.id,
+      name: res.data.name,
+      status: res.data.weather[0].description,
+      temp: Math.round(res.data.main.temp),
+    }
+  } catch (err) {
+    console.error(`날씨 조회 실패 (${cityName}):`, err)
+    return null
+  }
+}
+
+// 외부 API (Advice Slip) 연동
+const fetchExternalAdvice = async () => {
+  try {
+    const res = await axios.get('https://api.adviceslip.com/advice')
+    randomAdvice.value = res.data.slip.advice
+  } catch (err) {
+    console.error('외부 API 조회 실패:', err)
+  }
+}
+```
+
+##### [WeatherDetailView.vue - 동적 파라미터 기반 단기 예보 API 연동 스니펫]
+
+```javascript
+// 동적 라우트 파라미터(:cityId)를 수신하여 해당 도시 5일/3시간 예보 API 조회
+const fetchForecast = async () => {
+  try {
+    const res = await axios.get(
+      `https://api.openweathermap.org/data/2.5/forecast?id=${cityId}&units=metric&lang=kr&appid=${API_KEY}`,
+    )
+    cityName.value = res.data.city.name
+    forecastList.value = res.data.list.slice(0, 8) // 향후 24시간 예보
+  } catch (err) {
+    console.error('예보 데이터 조회 실패:', err)
+  } finally {
+    isLoading.value = false
+  }
+}
+```
+
+#### 5. 트러블슈팅 및 해결 과정
+
+##### [Troubleshooting 1] OpenWeatherMap 도시 영문명 불일치로 인한 데이터 누락 현상 (404 Error)
+
+- **문제 상황**: 초기 도시 목록에 `'Jeju-do'`를 지정했으나 API 호출 시 `404 Not Found` 에러가 발생하며 화면에 3개 도시만 출력되는 현상 발생
+- **원인 분석**: OpenWeatherMap API 식별 DB 표준 영문명과 입력 명칭 간 불일치로 인해 `fetchCityWeather`에서 `null`을 반환하고 `filter` 단계에서 제외됨
+- **해결 방법**: OpenWeatherMap의 표준 도시 지명인 `'Jeju'`로 명칭을 수정하여 5개 도시 데이터가 모두 정상 응답받도록 개선
+
+##### [Troubleshooting 2] 상세 페이지 라우팅 파라미터 연동 구조 개편
+
+- **문제 상황**: [상세보기] 클릭 시 단순 메인 화면 하단에 예보가 출력되거나 페이지 이동 시 도시 정보가 제대로 전달되지 않는 현상 발생
+- **원인 분석**: `WeatherCard`에서 발신되는 이벤트를 처리할 때 도시의 고유 식별자(`city.id`) 대신 도시 이름 문자열만 넘겨받아 라우터 패스와 매핑이 어긋남
+- **해결 방법**: `@click-detail="handleDetail(city.id)"`로 이벤트를 바인딩하고 `router.push('/weather/' + cityId)`를 실행하여 `WeatherDetailView.vue`에서 `route.params.cityId`로 예보 API를 정상 호출하도록 구조 수정
