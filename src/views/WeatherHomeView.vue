@@ -2,20 +2,20 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import WeatherCard from '@/components/exercise/WeatherCard.vue'
+import { ElMessage, ElNotification } from 'element-plus'
 
 const router = useRouter()
 const API_KEY = import.meta.env.VITE_WEATHER_API_KEY || '638421926882751adead648f88a64a7c'
 
-// 초기 표시 5개 도시 목록
 const initialCities = ['Seoul', 'Suwon', 'Busan', 'Daejeon', 'Jeju']
 
 const searchQuery = ref('')
 const cityList = ref([])
 const favoriteCities = ref([])
 const randomAdvice = ref('')
+const loading = ref(false)
 
-// [요구사항 1] OpenWeatherMap 실시간 날씨 데이터 조회
+// OpenWeatherMap 실시간 날씨 데이터 조회
 const fetchCityWeather = async (cityName) => {
   try {
     const res = await axios.get(
@@ -34,17 +34,19 @@ const fetchCityWeather = async (cityName) => {
 }
 
 const loadDefaultCities = async () => {
+  loading.value = true
   const results = await Promise.all(initialCities.map((city) => fetchCityWeather(city)))
   cityList.value = results.filter((item) => item !== null)
+  loading.value = false
 }
 
-// [요구사항 3] 기타 외부 API (Advice Slip)
+// 외부 API (Advice Slip) 연동
 const fetchExternalAdvice = async () => {
   try {
     const res = await axios.get('https://api.adviceslip.com/advice')
     randomAdvice.value = res.data.slip.advice
   } catch (err) {
-    console.error('외부 API 조회 실패:', err)
+    ElMessage.error('외부 Advice API 수신에 실패했습니다.')
   }
 }
 
@@ -56,20 +58,26 @@ const handleSearch = async () => {
       (c) => c.name.toLowerCase() !== searchedCity.name.toLowerCase(),
     )
     cityList.value.unshift(searchedCity)
+    ElNotification({
+      title: '검색 성공',
+      message: `${searchedCity.name}의 날씨 정보가 추가되었습니다.`,
+      type: 'success',
+    })
   } else {
-    alert('도시를 찾을 수 없습니다.')
+    ElMessage.error('도시를 찾을 수 없습니다. (영문 지명을 확인하세요)')
   }
 }
 
 const handleToggleFavorite = (cityName) => {
   if (favoriteCities.value.includes(cityName)) {
     favoriteCities.value = favoriteCities.value.filter((name) => name !== cityName)
+    ElMessage.info(`${cityName}이(가) 즐겨찾기에서 제외되었습니다.`)
   } else {
     favoriteCities.value.push(cityName)
+    ElMessage.success(`${cityName}이(가) 즐겨찾기에 등록되었습니다.`)
   }
 }
 
-// 상세보기 클릭 시 상세 페이지로 이동
 const handleDetail = (cityId) => {
   router.push(`/weather/${cityId}`)
 }
@@ -81,98 +89,149 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="dashboard">
-    <!-- 🔍 도시 검색 영역 -->
-    <div class="section-box">
-      <h3>🔍 도시 검색</h3>
-      <div class="search-input-wrapper">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="검색할 도시 이름 입력"
-          @keyup.enter="handleSearch"
-        />
+  <div class="dashboard-container">
+    <!-- 🔍 조건 검색 영역 (el-card, el-input 사용) -->
+    <el-card shadow="hover" class="box-card">
+      <template #header>
+        <div class="card-header">
+          <span>🔍 실시간 도시 날씨 검색</span>
+        </div>
+      </template>
+      <el-input
+        v-model="searchQuery"
+        placeholder="검색할 도시 이름을 영문으로 입력 후 엔터 (예: Seoul, Tokyo)"
+        clearable
+        @keyup.enter="handleSearch"
+      >
+        <template #append>
+          <el-button type="primary" @click="handleSearch">
+            <el-icon><Search /></el-icon>
+          </el-button>
+        </template>
+      </el-input>
+      <div class="search-tag" v-if="searchQuery">
+        <el-tag type="info" size="small">검색어: {{ searchQuery }}</el-tag>
       </div>
-      <p class="search-status">검색 중인 도시: {{ searchQuery }}</p>
-    </div>
+    </el-card>
 
-    <!-- 🏙️ 지역별 날씨 현황 영역 -->
-    <div class="section-box">
-      <h3>🏙️ 지역별 날씨 현황</h3>
-      <div class="card-list">
-        <WeatherCard
-          v-for="city in cityList"
-          :key="city.id"
-          :city-item="city"
-          :is-favorite="favoriteCities.includes(city.name)"
-          @click-detail="handleDetail(city.id)"
-          @toggle-favorite="handleToggleFavorite"
-        />
+    <!-- 🏙️ 지역별 날씨 현황 (24분할 반응형 el-row, el-col 배치 및 v-loading/el-skeleton) -->
+    <el-card shadow="hover" class="box-card">
+      <template #header>
+        <div class="card-header">
+          <span>🏙️ 주요 도시 날씨 현황</span>
+          <el-tag type="success" effect="dark">{{ cityList.length }}개 도시 조회됨</el-tag>
+        </div>
+      </template>
+
+      <!-- 로딩 상태 스켈레톤 유령 레이아웃 -->
+      <el-skeleton :rows="3" animated v-if="loading" />
+
+      <div v-else>
+        <el-empty description="표시할 도시 날씨 데이터가 없습니다." v-if="cityList.length === 0" />
+
+        <el-row :gutter="16" v-else>
+          <el-col :xs="24" :sm="12" :md="8" v-for="city in cityList" :key="city.id">
+            <el-card class="city-item-card" shadow="never">
+              <div class="city-header">
+                <span class="city-title">{{ city.name }}</span>
+                <el-button type="text" @click="handleToggleFavorite(city.name)">
+                  <el-icon
+                    size="20"
+                    :color="favoriteCities.includes(city.name) ? '#E6A23C' : '#909399'"
+                  >
+                    <StarFilled v-if="favoriteCities.includes(city.name)" />
+                    <Star v-else />
+                  </el-icon>
+                </el-button>
+              </div>
+
+              <div class="city-body">
+                <span class="temp-display">{{ city.temp }}°C</span>
+                <el-tag type="warning" effect="light">{{ city.status }}</el-tag>
+              </div>
+
+              <div class="city-footer">
+                <el-button type="primary" size="small" plain @click="handleDetail(city.id)">
+                  상세예보 보기 <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+                </el-button>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
       </div>
-    </div>
+    </el-card>
 
-    <!-- [요구사항 3] 기타 외부 API 출력 -->
-    <div class="section-box advice-box">
-      <h3>💡 오늘의 한마디 (외부 API)</h3>
-      <p class="advice-text">"{{ randomAdvice || '로딩 중...' }}"</p>
-      <button class="btn-refresh" @click="fetchExternalAdvice">새 문장 불러오기</button>
-    </div>
+    <!-- 💡 외부 API 피드백 영역 (el-card, el-button 사용) -->
+    <el-card shadow="hover" class="advice-card">
+      <template #header>
+        <div class="card-header">
+          <span>💡 오늘의 한마디 (Advice Slip API)</span>
+        </div>
+      </template>
+      <p class="advice-text">"{{ randomAdvice || '글귀를 불러오는 중입니다...' }}"</p>
+      <el-button type="success" size="small" plain @click="fetchExternalAdvice">
+        <el-icon><Refresh /></el-icon> 다른 문장 가져오기
+      </el-button>
+    </el-card>
   </div>
 </template>
 
 <style scoped>
-.dashboard {
+.dashboard-container {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
-.section-box {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px;
+.box-card {
+  border-radius: 10px;
 }
-.section-box h3 {
-  margin-top: 0;
-  margin-bottom: 16px;
-  font-size: 1.1rem;
-  color: #1e293b;
-}
-.search-input-wrapper input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #cbd5e0;
-  border-radius: 6px;
-  box-sizing: border-box;
-  font-size: 0.95rem;
-}
-.search-status {
-  margin-top: 12px;
-  margin-bottom: 0;
-  font-size: 0.9rem;
-  color: #64748b;
-}
-.card-list {
+.card-header {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
 }
-.advice-box {
-  background-color: #f0fdf4;
-  border-color: #bbf7d0;
+.search-tag {
+  margin-top: 8px;
+}
+.city-item-card {
+  margin-bottom: 16px;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+.city-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.city-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #303133;
+}
+.city-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+}
+.temp-display {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #409eff;
+}
+.city-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+.advice-card {
+  background-color: #f0f9eb;
+  border-color: #e1f3d8;
 }
 .advice-text {
   font-style: italic;
-  color: #166534;
+  color: #67c23a;
+  font-weight: 500;
   margin-bottom: 12px;
-}
-.btn-refresh {
-  background-color: #22c55e;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
 }
 </style>

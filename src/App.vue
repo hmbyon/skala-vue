@@ -6,7 +6,7 @@ import UnitToggler from '@/components/exercise/UnitToggler.vue'
 <template>
   <div class="app-container">
     <header class="header">
-      <h2>🌤️ Hands on - Weather Axios</h2>
+      <h2>🌤️ Hands on - Weather UI Library</h2>
 
       <div class="nav-wrapper">
         <nav class="nav-bar">
@@ -79,5 +79,26 @@ h2 {
 
 .content {
   width: 100%;
+}
+</style>
+
+<style>
+/* 웹폰트(Pretendard) 불러오기 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+
+/* 전역 폰트 및 Element Plus 메시지 폰트 강제 적용 */
+* {
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    Roboto,
+    'Helvetica Neue',
+    'Segoe UI',
+    'Apple SD Gothic Neo',
+    'Noto Sans KR',
+    'Malgun Gothic',
+    sans-serif !important;
 }
 </style>
