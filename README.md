@@ -710,3 +710,77 @@ app.use(ElementPlus) // Vue 앱에 Element Plus 사용 등록
 - **문제 상황**: `WeatherDetailView.vue` 빌드 시 `Invalid end tag` 오류 오버레이가 발생하며 화면 전체 중단
 - **원인 분석**: `<el-card>` 컴포넌트를 닫을 때 `</el-card>` 대신 `</card>`로 잘못 오타 작성하여 템플릿 파서 태그 불일치 발생
 - **해결 방법**: 오타 태그를 `</el-card>`로 정정하여 Vite HMR 정상 작동 확인
+
+---
+
+### Hands-on 09: 코드 품질 관리 (ESLint & Prettier) 및 환경변수 분리
+
+#### 1. 개요 및 목적
+
+- ESLint 정적 분석 도구를 활용하여 구문 오류 및 코드 컨벤션 위반 사항을 사전 검출
+- Prettier 포맷터를 연동하여 팀 공통의 시각적 코드 스타일 규격 자동화
+- 개발(Development), 테스트(Staging), 운영(Production) 환경별 `.env` 환경변수를 격리하여 API Key 및 보안 설정 관리
+
+#### 2. 주요 구현 내용
+
+- **ESLint 커스텀 규칙 설정 (`eslint.config.js`)**:
+  - `'eqeqeq': ['error', 'always']` 규칙을 적용하여 느슨한 비교(`==`) 금지 및 엄격한 비교(`===`) 강제
+  - 개발 편의를 위한 `'no-console': 'off'` 및 미사용 변수 경고(`'no-unused-vars': 'warn'`) 설정
+
+- **Prettier 일괄 포맷팅 (`.prettierrc.json`)**:
+  - 세미콜론 제거(`semi: false`), 홑따옴표 사용(`singleQuote: true`), 2칸 들여쓰기 규격 준수
+  - `npm run format` 스크립트를 통한 프로젝트 전체 소스코드 스타일 일괄 교체
+
+- **환경변수 파일 분리 및 주입**:
+  - `.env`, `.env.staging`, `.env.production` 파일 생성 및 `VITE_` 접두사 변수 정의
+  - `package.json` 내 `build:staging` 및 `build:production` 빌드 명령어 스크립트 작성
+  - `.gitignore` 파일에 `.env` 관련 파일들을 등록하여 GitHub API Key 유출 방지
+
+#### 3. 핵심 설정 코드 스니펫
+
+##### [eslint.config.js - Custom Rules 설정]
+
+```javascript
+export default defineConfig([
+  // ... 기존 기본 설정
+  {
+    name: 'app/custom-rules',
+    rules: {
+      eqeqeq: ['error', 'always'], // 엄격한 비교 연산자(===) 강제
+      'no-console': 'off', // console.log 허용
+      'no-unused-vars': 'warn', // 미사용 변수 경고
+      'vue/multi-word-component-names': 'off',
+    },
+  },
+  skipFormatting,
+])
+```
+
+##### [package.json - 환경별 빌드 스크립트 및 포맷팅 명령]
+
+```json
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "build:staging": "vite build --mode staging",
+  "build:production": "vite build --mode production",
+  "lint": "run-s lint:*",
+  "format": "prettier --write-experimental-cli src/"
+}
+```
+
+#### 4. 트러블슈팅 및 검증 과정
+
+##### [Troubleshooting 1] 느슨한 비교 연산자(`==`) 작성 시 ESLint 에러 검출
+
+- **문제 상황**: 코드 내 `if (userAge == 20)` 작성 시 에디터 상에서 빨간 밑줄 오류 표시 및 `npm run lint` 실행 시 빌드 중단
+- **원인 분석**: `eslint.config.js`에 설정한 `'eqeqeq': ['error', 'always']` 규칙 위반
+- **해결 방법**: 엄격한 비교 연산자인 `if (userAge === 20)`으로 정정하여 정적 분석 검사 통과
+
+##### [Troubleshooting 2] API Key 유출 위험 및 환경변수 격리
+
+- **문제 상황**: GitHub 퍼블릭 저장소에 API Key가 하드코딩된 소스코드가 노출될 위험 존재
+- **원인 분석**: `.env` 파일이 Git 추적 대상에 포함되어 저장소로 Push될 가능성
+- **해결 방법**: `.gitignore` 하단에 `.env`, `.env.*` 구문을 추가하고 Vercel 대시보드 Environment Variables에 API Key를 별도 등록하여 보안 처리
+
+---
