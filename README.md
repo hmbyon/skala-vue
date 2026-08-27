@@ -411,3 +411,109 @@ watch(searchQuery, (newQuery) => {
 - **문제 상황**: `NotFoundView.vue`에서 `router.push({ name: 'WeatherHome' })` 호출 시 해당 이름을 찾지 못해 버튼 클릭 이벤트가 동작하지 않음
 - **원인 분석**: `router/index.js`에 설정된 메인 라우트의 name 속성(`'home'`)과 View에서 호출하려 한 name 속성(`'WeatherHome'`)이 불일치함
 - **해결 방법**: 경로 기반 직관적 이동 방식인 `router.push('/')`로 변경하여 라우터 명칭 의존성 없이 안정적으로 동작하도록 수정함
+
+---
+
+### Hands-on 06: 과제 5 - 전역 상태 관리 (Pinia)
+
+#### 1. 개요 및 목적
+
+- Vue 3의 공식 전역 상태 관리 라이브러리인 Pinia를 도입하여 애플리케이션 전역에서 공유되는 상태를 중앙 집중식으로 관리
+- 섭씨/화씨 온도 단위(`unit`) 상태를 스토어(`configStore.js`)에 구축하고, 여러 컴포넌트(`UnitToggler.vue`, `WeatherCard.vue`)에서 Props Drilling 없이 반응형으로 동기화 및 제어
+
+#### 2. 주요 구현 내용
+
+- **Pinia Store 구축 (`src/stores/configStore.js`)**:
+  - Setup Store 방식(`defineStore`)으로 작성
+  - **State**: `unit` (`'celsius'` | `'fahrenheit'`)
+  - **Getters**: `unitSymbol` (`'°C'` | `'°F'`)
+  - **Actions**: `toggleUnit()`을 통해 섭씨/화씨 단위 즉시 전환
+
+- **단위 토글 컴포넌트 개발 (`UnitToggler.vue`)**:
+  - 스토어의 `configStore.unit` 상태를 읽어 현재 단위(`섭씨(℃)` / `화씨(℉)`)를 표시하고 버튼 클릭 시 `configStore.toggleUnit` 실행
+
+- **App.vue 레이아웃 통합**:
+  - `<header class="header">` 구역을 작성하여 상단 내비게이션 바 우측 끝에 `UnitToggler.vue` 배치 (`justify-content: space-between`)
+
+- **날씨 카드 기온 동적 변환 (`WeatherCard.vue`)**:
+  - `configStore.unit`이 `'fahrenheit'`일 때 `(rawTemp * 9) / 5 + 32` 공식을 적용해 화씨 숫자를 동적 연산하는 `computed` 프로퍼티(`displayTemp`) 구현
+  - 템플릿의 하드코딩된 `°C` 대신 `{{ displayTemp }}{{ configStore.unitSymbol }}`로 연결하여 클릭 시 전체 화면의 기온 숫자와 단위 기호가 실시간 업데이트되도록 바인딩
+
+#### 3. 본인 차별점 (커스텀 구현 포인트)
+
+- **전역 상태 기반 유기적 UI 동기화**: 컴포넌트 간 복잡한 Props/Emits 전달 과정 없이, Header 토글 버튼 클릭 단 한 번으로 메인 대시보드 내 모든 날씨 카드의 온도값과 단위 배지가 실시간 동기화되도록 설계
+- **화씨 연산 및 반올림 처리**: `Math.round()`를 적용해 화씨 변환 시 발생하는 소수점 자릿수를 정수로 깔끔하게 가공 출력
+
+#### 4. 핵심 구현 스니펫 및 주요 소스 파일
+
+- `src/stores/configStore.js`
+- `src/components/exercise/UnitToggler.vue`
+- `src/components/exercise/WeatherCard.vue`
+- `src/App.vue`
+
+##### [src/stores/configStore.js - Pinia Store 스니펫]
+
+```javascript
+import { ref, computed } from 'vue'
+import { defineStore } from 'pinia'
+
+export const useConfigStore = defineStore('config', () => {
+  const unit = ref('celsius')
+  const unitSymbol = computed(() => (unit.value === 'celsius' ? '°C' : '°F'))
+
+  function toggleUnit() {
+    unit.value = unit.value === 'celsius' ? 'fahrenheit' : 'celsius'
+  }
+
+  return { unit, unitSymbol, toggleUnit }
+})
+```
+
+##### [WeatherCard.vue - 스토어 연동 및 화씨 연산 computed 스니펫]
+
+```vue
+<script setup>
+import { computed } from 'vue'
+import { useConfigStore } from '../../stores/configStore'
+
+const props = defineProps({
+  cityItem: { type: Object, required: true },
+})
+
+const emit = defineEmits(['select-card', 'click-detail'])
+const configStore = useConfigStore()
+
+// 스토어의 상태값이 'fahrenheit'일 때만 화씨 공식 적용 연산
+const displayTemp = computed(() => {
+  const rawTemp = props.cityItem.temp
+  if (configStore.unit === 'fahrenheit') {
+    return Math.round((rawTemp * 9) / 5 + 32)
+  }
+  return rawTemp
+})
+</script>
+
+<template>
+  <div class="weather-card" @click="emit('select-card', `${cityItem.name}이 선택되었습니다.`)">
+    <h4>{{ cityItem.name }} ({{ cityItem.status }})</h4>
+    <p>현재 기온: {{ displayTemp }}{{ configStore.unitSymbol }}</p>
+    <button class="btn-detail" @click.stop="emit('click-detail', cityItem.name, cityItem.status)">
+      상세보기
+    </button>
+  </div>
+</template>
+```
+
+#### 5. 트러블슈팅 및 해결 과정
+
+##### [Troubleshooting 1] 스토어 정의 후 Vue DevTools 내 Pinia 미노출 현상
+
+- **문제 상황**: `configStore.js` 작성 후 Vue DevTools 탭에 스토어가 즉시 노출되지 않는 현상 발생
+- **원인 분석**: Pinia 스토어는 Lazy Initialization 방식으로 동작하여, 해당 스토어 훅을 가동하는 컴포넌트가 실제 DOM에 렌더링되기 전까지는 인스턴스가 등록되지 않음
+- **해결 방법**: `UnitToggler.vue` 및 `WeatherCard.vue`를 화면에 마운트시킨 후 새로고침하여 DevTools에 `config` 스토어가 정상 등록됨을 검증
+
+##### [Troubleshooting 2] 컴포넌트 세부 폴더 구조에 따른 Vite Import 경로 에러
+
+- **문제 상황**: `App.vue`에서 `UnitToggler.vue`를 불러올 때 모듈 로딩 에러(`Failed to resolve import`) 발생
+- **원인 분석**: 프로젝트 폴더 구조상 파일이 `src/components/` 직하위가 아닌 `src/components/exercise/` 세부 디렉터리에 위치함
+- **해결 방법**: `App.vue` 내 import 구문을 `import UnitToggler from '@/components/exercise/UnitToggler.vue'`로 프로젝트 파일 구조에 맞게 수정하여 해결
