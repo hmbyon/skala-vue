@@ -9,8 +9,7 @@ const increaseRef = () => {
   count.value++
 }
 const changeUserName = () => {
-user.value.name =
-'장보고'
+  user.value.name = '장보고'
 }
 </script>
 <template>

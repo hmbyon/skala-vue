@@ -58,7 +58,7 @@ const fetchExternalAdvice = async () => {
   try {
     const res = await axios.get('https://api.adviceslip.com/advice')
     randomAdvice.value = res.data.slip.advice
-  } catch (err) {
+  } catch {
     ElMessage.error('외부 Advice API 수신에 실패했습니다.')
   }
 }
