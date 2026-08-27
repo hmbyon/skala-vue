@@ -616,3 +616,97 @@ const fetchForecast = async () => {
 - **문제 상황**: [상세보기] 클릭 시 단순 메인 화면 하단에 예보가 출력되거나 페이지 이동 시 도시 정보가 제대로 전달되지 않는 현상 발생
 - **원인 분석**: `WeatherCard`에서 발신되는 이벤트를 처리할 때 도시의 고유 식별자(`city.id`) 대신 도시 이름 문자열만 넘겨받아 라우터 패스와 매핑이 어긋남
 - **해결 방법**: `@click-detail="handleDetail(city.id)"`로 이벤트를 바인딩하고 `router.push('/weather/' + cityId)`를 실행하여 `WeatherDetailView.vue`에서 `route.params.cityId`로 예보 API를 정상 호출하도록 구조 수정
+
+---
+
+### Hands-on 08: 과제 7 - UI 라이브러리 적용 (Element Plus)
+
+#### 1. 개요 및 목적
+
+- Vue 3 오픈소스 UI 라이브러리인 **Element Plus**를 도입하여 애플리케이션 컴포넌트 표준화 및 UX 고도화 진행
+- 직접 CSS 마크업을 작성하던 기존 방식을 대폭 개선하고, 24분할 반응형 그리드, 스케일톤 유령 레이아웃, 인포그래픽 통계 위젯 등 완성형 컴포넌트를 결합하여 완성도 높은 UI 구축
+
+#### 2. 주요 구현 내용
+
+- **글로벌 UI 환경 구성 (`src/main.js`)**: Element Plus 모듈, 전역 CSS 패키지(`index.css`), `@element-plus/icons-vue` 전체 아이콘 컴포넌트 전역 주입
+- **대시보드 UI 개편 (`WeatherHomeView.vue`)**:
+  - `<el-card>` 및 `<el-input>` 기반의 조건 검색 바 구축
+  - `<el-row>` 및 `<el-col>` 24분할 반응형 그리드를 통한 카드 자동 레이아웃 배치
+  - 비동기 로딩 시 `<el-skeleton>` 수신 버퍼 처리 및 데이터 누락 시 `<el-empty>` 자동 노출
+
+- **상세 예보 화면 인포그래픽화 (`WeatherDetailView.vue`)**:
+  - `<el-statistic>` 및 `<el-progress>` 기반의 습도, 풍속, 구름량 시각화
+  - `<el-descriptions>`를 활용한 일출/일몰 타임, 위경도 좌표, 가시거리 명세표 구성
+  - 시간대별 단기 예보 타임라인 칩 배치
+
+- **시스템 피드백 통합**: 도시 검색 시 `ElNotification` 슬라이드 알림, 즐겨찾기 변경 시 `ElMessage` 토스트 메시지 출력
+
+#### 3. 본인 차별점 (커스텀 구현 포인트)
+
+- **인포그래픽 스타일 상세 페이지 연동**: 단순 텍스트 목록 출력이던 상세 예보 화면을 히어로 카드, 프로그레스 바, 통계 위젯 형태의 다채로운 인포그래픽으로 재구성
+- **전역 웹폰트(Pretendard) 및 Teleport 스타일 통일**: `ElMessage`, `ElNotification` 등 DOM 최상단에 포털(Teleport) 형태로 떠오르는 팝업까지 폰트 파손(굴림/바탕체) 없이 깔끔하게 반영되도록 `App.vue` 내 전역 `<style>`에 `!important` 폰트 바인딩 구조 설계
+
+#### 4. 핵심 구현 스니펫 및 주요 소스 파일
+
+- `src/main.js`
+- `src/App.vue`
+- `src/views/WeatherHomeView.vue`
+- `src/views/WeatherDetailView.vue`
+
+##### [src/main.js - Element Plus 및 아이콘 전역 설정 스니펫]
+
+```javascript
+import { createApp } from 'vue'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css' // 전역 CSS 패키지
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+
+const app = createApp(App)
+
+// 전체 아이콘 컴포넌트 전역 등록
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component)
+}
+
+app.use(ElementPlus) // Vue 앱에 Element Plus 사용 등록
+```
+
+##### [src/App.vue - Teleport 알림 대응 전역 Pretendard 폰트 바인딩 스니펫]
+
+```vue
+<style>
+/* 웹폰트(Pretendard) 불러오기 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+
+/* 전역 폰트 및 Element Plus 메시지 팝업 폰트 강제 적용 */
+* {
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    Roboto,
+    sans-serif !important;
+}
+</style>
+```
+
+#### 5. 트러블슈팅 및 해결 과정
+
+##### [Troubleshooting 1] Element Plus 컴포넌트 스타일 미적용 현상 (민낯 텍스트 노출)
+
+- **문제 상황**: `<el-card>`, `<el-button>` 사용 시 테두리와 배경색이 적용되지 않고 단순 기본 텍스트 형태로 노출됨
+- **원인 분석**: `main.js`에 Element Plus 전역 CSS 패키지(`import 'element-plus/dist/index.css'`)가 누락되어 컴포넌트 스타일시트가 주입되지 않음
+- **해결 방법**: `main.js` 상단에 `index.css` 패키지 구문을 명시적으로 추가하고 개발 서버 재가동을 통해 세련된 UI 스타일 복원
+
+##### [Troubleshooting 2] ElMessage / ElNotification 토스트 알림 시 폰트 깨짐 현상
+
+- **문제 상황**: 토스트 메시지 팝업 출력 시 구식 명조/굴림 계열 폰트로 화면에 어색하게 노출됨
+- **원인 분석**: Element Plus의 피드백 컴포넌트(`ElMessage`, `ElNotification`)는 `<div id="app">` 내부가 아닌 DOM 최상단 바디에 Teleport 되므로 컴포넌트 내부 스코프 스타일(`<style scoped>`)이 미치지 않음
+- **해결 방법**: `App.vue` 하단에 unscoped `<style>` 블록을 작성하고 `* { font-family: ... !important; }` 수식어로 전역 강제 바인딩하여 팝업 폰트 통합
+
+##### [Troubleshooting 3] Vite 템플릿 컴파일 에러 (`[plugin:vite-plugin-vue-inspector] Invalid end tag`)
+
+- **문제 상황**: `WeatherDetailView.vue` 빌드 시 `Invalid end tag` 오류 오버레이가 발생하며 화면 전체 중단
+- **원인 분석**: `<el-card>` 컴포넌트를 닫을 때 `</el-card>` 대신 `</card>`로 잘못 오타 작성하여 템플릿 파서 태그 불일치 발생
+- **해결 방법**: 오타 태그를 `</el-card>`로 정정하여 Vite HMR 정상 작동 확인
