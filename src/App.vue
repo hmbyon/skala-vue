@@ -1,5 +1,7 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
+// 1. StoreCounter 컴포넌트 import 추가
+import StoreCounter from '@/components/practice/Day4/library/StoreCounter.vue'
 </script>
 
 <template>
@@ -12,6 +14,11 @@ import { RouterLink, RouterView } from 'vue-router'
     </nav>
     <main class="content">
       <RouterView />
+
+      <hr style="margin: 30px 0; border: none; border-top: 1px dashed #ccc" />
+
+      <!-- 2. 화면 하단에 컴포넌트 배치 -->
+      <StoreCounter />
     </main>
   </div>
 </template>
