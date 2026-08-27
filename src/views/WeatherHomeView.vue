@@ -19,6 +19,30 @@ const favoriteCities = ref([])
 const randomAdvice = ref('')
 const loading = ref(false)
 
+// 주요 도시 한글 이름 매핑 사전
+const cityNameMap = {
+  seoul: '서울',
+  suwon: '수원',
+  'suwon-si': '수원',
+  busan: '부산',
+  daejeon: '대전',
+  jeju: '제주',
+  'jeju city': '제주',
+  incheon: '인천',
+  daegu: '대구',
+  gwangju: '광주',
+  ulsan: '울산',
+  tokyo: '도쿄',
+  'new york': '뉴욕',
+}
+
+// 영문 도시명을 한글로 변환 (등록되지 않은 경우 영문 유지)
+const getKoreanCityName = (englishName) => {
+  if (!englishName) return ''
+  const key = englishName.toLowerCase().trim()
+  return cityNameMap[key] || englishName
+}
+
 // Pinia 전역 단위(celsius/fahrenheit)에 맞춰 기온 숫자 연산
 const formatTemp = (celsius) => {
   if (celsius === undefined || celsius === null) return 0
@@ -36,7 +60,7 @@ const fetchCityWeather = async (cityName) => {
     )
     return {
       id: res.data.id,
-      name: res.data.name,
+      name: getKoreanCityName(res.data.name),
       status: res.data.weather[0].description,
       temp: Math.round(res.data.main.temp),
     }
