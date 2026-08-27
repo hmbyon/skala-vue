@@ -1,86 +1,112 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
 
 const route = useRoute()
 const router = useRouter()
 
-const mockDetails = {
-  city_01: {
-    name: '대한민국 서울특별시',
-    temp: 28,
-    status: '맑음',
-    humidity: '55%',
-    wind: '2.5m/s',
-  },
-  city_02: {
-    name: '경기도 수원시 영통구',
-    temp: 24,
-    status: '비',
-    humidity: '85%',
-    wind: '4.1m/s',
-  },
-  city_03: {
-    name: '부산광역시 해운대구',
-    temp: 26,
-    status: '구름',
-    humidity: '65%',
-    wind: '5.0m/s',
-  },
+const API_KEY = import.meta.env.VITE_WEATHER_API_KEY || '638421926882751adead648f88a64a7c'
+const cityId = route.params.cityId
+
+const forecastList = ref([])
+const cityName = ref('')
+const isLoading = ref(true)
+
+// [요구사항 2] OpenWeatherMap 추가 API (5일/3시간 예보)
+const fetchForecast = async () => {
+  try {
+    const res = await axios.get(
+      `https://api.openweathermap.org/data/2.5/forecast?id=${cityId}&units=metric&lang=kr&appid=${API_KEY}`,
+    )
+    cityName.value = res.data.city.name
+    forecastList.value = res.data.list.slice(0, 8) // 향후 24시간(3시간 간격 8개) 예보
+  } catch (err) {
+    console.error('예보 데이터 조회 실패:', err)
+  } finally {
+    isLoading.value = false
+  }
 }
 
-const cityData = ref(null)
+const goBack = () => {
+  router.push('/')
+}
 
 onMounted(() => {
-  const id = route.params.cityId
-  if (mockDetails[id]) {
-    cityData.value = mockDetails[id]
-  }
+  fetchForecast()
 })
 </script>
 
 <template>
   <div class="detail-container">
-    <h3>📊 지역별 상세 기상 관측 정보</h3>
-    <hr />
+    <button class="btn-back" @click="goBack">← 목록으로 돌아가기</button>
 
-    <div v-if="cityData" class="info-card">
-      <h4>📍 지정 지역: {{ cityData.name }}</h4>
-      <p>
-        실시간 기온: <strong>{{ cityData.temp }}°C</strong>
-      </p>
-      <p>기상 현황: {{ cityData.status }}</p>
-      <p>대기 습도: {{ cityData.humidity }}</p>
-      <p>현재 풍속: {{ cityData.wind }}</p>
-    </div>
-    <div v-else>
-      <p>해당 지역의 상세 데이터 장부가 존재하지 않습니다.</p>
-    </div>
+    <div v-if="isLoading" class="loading">예보 데이터를 불러오는 중...</div>
 
-    <button @click="router.push('/')" class="back-btn">← 메인 대시보드로 돌아가기</button>
+    <div v-else class="section-box">
+      <h3>📈 {{ cityName }} 단기 예보 (OpenWeatherMap 추가 API)</h3>
+      <div class="forecast-grid">
+        <div v-for="item in forecastList" :key="item.dt" class="forecast-card">
+          <span class="time">{{ item.dt_txt.slice(11, 16) }}</span>
+          <span class="temp">{{ Math.round(item.main.temp) }}°C</span>
+          <span class="desc">{{ item.weather[0].description }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .detail-container {
-  margin: 0 auto;
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-.info-card {
-  background: #f1f2f6;
-  padding: 15px;
-  border-radius: 6px;
-  margin: 15px 0;
-}
-.back-btn {
-  padding: 8px 12px;
-  background: #2c3e50;
-  color: white;
+.btn-back {
+  align-self: flex-start;
+  padding: 8px 14px;
+  background: #e2e8f0;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+  font-weight: bold;
+}
+.section-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  text-align: center;
+}
+.forecast-card {
+  background: white;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.forecast-card .time {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.forecast-card .temp {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+.forecast-card .desc {
+  font-size: 0.8rem;
+  color: #475569;
+}
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #64748b;
 }
 </style>
