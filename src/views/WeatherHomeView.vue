@@ -3,8 +3,12 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElNotification } from 'element-plus'
+import { useConfigStore } from '@/stores/configStore'
 
 const router = useRouter()
+const configStore = useConfigStore()
+
+// .env 환경변수 및 기본 fallback API Key
 const API_KEY = import.meta.env.VITE_WEATHER_API_KEY || '638421926882751adead648f88a64a7c'
 
 const initialCities = ['Seoul', 'Suwon', 'Busan', 'Daejeon', 'Jeju']
@@ -14,6 +18,15 @@ const cityList = ref([])
 const favoriteCities = ref([])
 const randomAdvice = ref('')
 const loading = ref(false)
+
+// Pinia 전역 단위(celsius/fahrenheit)에 맞춰 기온 숫자 연산
+const formatTemp = (celsius) => {
+  if (celsius === undefined || celsius === null) return 0
+  if (configStore.unit === 'fahrenheit') {
+    return Math.round((celsius * 9) / 5 + 32)
+  }
+  return Math.round(celsius)
+}
 
 // OpenWeatherMap 실시간 날씨 데이터 조회
 const fetchCityWeather = async (cityName) => {
@@ -90,7 +103,7 @@ onMounted(() => {
 
 <template>
   <div class="dashboard-container">
-    <!-- 🔍 조건 검색 영역 (el-card, el-input 사용) -->
+    <!-- 🔍 실시간 도시 날씨 검색 -->
     <el-card shadow="hover" class="box-card">
       <template #header>
         <div class="card-header">
@@ -114,7 +127,7 @@ onMounted(() => {
       </div>
     </el-card>
 
-    <!-- 🏙️ 지역별 날씨 현황 (24분할 반응형 el-row, el-col 배치 및 v-loading/el-skeleton) -->
+    <!-- 🏙️ 주요 도시 날씨 현황 -->
     <el-card shadow="hover" class="box-card">
       <template #header>
         <div class="card-header">
@@ -123,7 +136,7 @@ onMounted(() => {
         </div>
       </template>
 
-      <!-- 로딩 상태 스켈레톤 유령 레이아웃 -->
+      <!-- 로딩 상태 스켈레톤 -->
       <el-skeleton :rows="3" animated v-if="loading" />
 
       <div v-else>
@@ -146,7 +159,10 @@ onMounted(() => {
               </div>
 
               <div class="city-body">
-                <span class="temp-display">{{ city.temp }}°C</span>
+                <!-- Pinia 스토어 단위 반응형 적용 -->
+                <span class="temp-display">
+                  {{ formatTemp(city.temp) }}{{ configStore.unitSymbol }}
+                </span>
                 <el-tag type="warning" effect="light">{{ city.status }}</el-tag>
               </div>
 
@@ -161,7 +177,7 @@ onMounted(() => {
       </div>
     </el-card>
 
-    <!-- 💡 외부 API 피드백 영역 (el-card, el-button 사용) -->
+    <!-- 💡 외부 API 피드백 -->
     <el-card shadow="hover" class="advice-card">
       <template #header>
         <div class="card-header">
