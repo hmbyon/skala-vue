@@ -1,5 +1,9 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+import { useConfigStore } from '@/stores/configStore'
+
+// 1. props를 변수에 할당하여 script 내에서 접근 가능하도록 설정
+const props = defineProps({
   cityItem: {
     type: Object,
     required: true,
@@ -11,6 +15,18 @@ defineProps({
 })
 
 defineEmits(['select-card', 'click-detail', 'toggle-favorite'])
+
+// 2. Config Store 가동
+const configStore = useConfigStore()
+
+// 3. 섭씨/화씨 변환 계산 프로퍼티 작성
+const displayTemp = computed(() => {
+  const rawTemp = props.cityItem.temp
+  if (configStore.unit === 'fahrenheit') {
+    return Math.round((rawTemp * 9) / 5 + 32)
+  }
+  return rawTemp
+})
 </script>
 
 <template>
@@ -26,7 +42,8 @@ defineEmits(['select-card', 'click-detail', 'toggle-favorite'])
       </button>
     </div>
 
-    <p>현재 기온: {{ cityItem.temp }}°C</p>
+    <!-- 4. 하드코딩된 °C 대신 변환된 온도값(displayTemp)과 단위 기호(unitSymbol) 적용 -->
+    <p>현재 기온: {{ displayTemp }}{{ configStore.unitSymbol }}</p>
 
     <span v-if="cityItem.temp >= 25" class="badge hot">🔥 더움 (25도 이상)</span>
     <span v-else class="badge cool">❄️ 선선함 (25도 미만)</span>
